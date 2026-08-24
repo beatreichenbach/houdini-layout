@@ -1,0 +1,20 @@
+[project]
+name = "houdini-layout"
+version = "0.1.0"
+description = "Houdini HDA to transform and duplicate primitives in the stage"
+requires-python = ">=3.11, <3.12"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "types-houdini>=21.0",
+    "types-usd",
+    "ruff",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+docstring-code-format = true

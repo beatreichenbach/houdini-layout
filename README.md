@@ -1,0 +1,43 @@
+# Layout
+
+A layout tool kit for SideFX Houdini.
+This HDA allows to transform and duplicate primitives in the stage while exposing all edits in a simple interface that
+can be edited.
+
+## Installation
+
+Layout is installed as a Houdini Package.
+
+1. Go to the [Releases](https://github.com/beatreichenbach/houdini-layout/releases) page and download the latest
+   `layout.zip`.
+2. Navigate to your Houdini user preferences folder: `$HOME/houdini‹X›.‹Y›`
+3. If you don't have a folder named `packages` in that directory, create it.
+4. Extract the contents of the `.zip` file into the `packages` folder.
+5. Restart Houdini. You can verify the installation by opening the **Package Browser** (**Windows > Package Browser**)
+   and ensuring "Layout" is listed.
+
+**Example Folder Structure:**
+
+```text
+├── houdini21.0
+    ├── packages/
+        ├── layout.json
+        └── /layout
+            └── (HDA files)
+```
+
+## Usage
+
+For instructions on how to use each node, see this [YouTube video](https://www.youtube.com/watch?v=TQo4t359LCU).
+
+## About this Repository
+
+| Directory | Description                                                                                                         |
+|-----------|---------------------------------------------------------------------------------------------------------------------|
+| `work/`   | Houdini files that was used to create the icons, promotional materials and demos.                                   |
+| `src/`    | Digital Assets and the package definition. During the release action they get packaged in the `meadow.zip` archive. |
+| `build/`  | Build directory used to generate the release package.                                                               |
+
+## License
+
+MIT License. Copyright 2026 - Beat Reichenbach. See the [License](LICENSE) file for details.

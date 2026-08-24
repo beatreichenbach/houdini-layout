@@ -1,0 +1,8 @@
+{
+  "env": [
+    {
+      "HOUDINI_OTLSCAN_PATH": "$HOUDINI_PACKAGE_PATH/layout"
+    }
+  ],
+  "hpath": "$HOUDINI_PACKAGE_PATH/layout"
+}

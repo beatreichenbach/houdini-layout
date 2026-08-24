@@ -4,6 +4,8 @@ A layout tool kit for SideFX Houdini.
 This HDA allows to transform and duplicate primitives in the stage while exposing all edits in a simple interface that
 can be edited.
 
+![Screenshot](.github/assets/screenshot.png)
+
 ## Installation
 
 Layout is installed as a Houdini Package.
@@ -26,16 +28,11 @@ Layout is installed as a Houdini Package.
             └── (HDA files)
 ```
 
-## Usage
-
-For instructions on how to use each node, see this [YouTube video](https://www.youtube.com/watch?v=TQo4t359LCU).
-
 ## About this Repository
 
 | Directory | Description                                                                                                         |
 |-----------|---------------------------------------------------------------------------------------------------------------------|
-| `work/`   | Houdini files that was used to create the icons, promotional materials and demos.                                   |
-| `src/`    | Digital Assets and the package definition. During the release action they get packaged in the `meadow.zip` archive. |
+| `src/`    | Digital Assets and the package definition. During the release action they get packaged in the `layout.zip` archive. |
 | `build/`  | Build directory used to generate the release package.                                                               |
 
 ## License

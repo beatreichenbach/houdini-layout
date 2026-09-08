@@ -62,9 +62,14 @@ class PrimParms:
 
 
 class State:
+    duplicate_key = f'{HK_CTXT}.duplicate'
+    translate_key = f'{HK_CTXT}.translate'
+    rotate_key = f'{HK_CTXT}.rotate'
+    scale_key = f'{HK_CTXT}.scale'
+    delete_key = f'{HK_CTXT}.delete'
+
     def __init__(
-            self, state_name: str, scene_viewer: hou.SceneViewer,
-            **kwargs: dict[str, Any]
+        self, state_name: str, scene_viewer: hou.SceneViewer, **kwargs: dict[str, Any]
     ) -> None:
         self.state_name = state_name
         self.scene_viewer = scene_viewer
@@ -98,25 +103,20 @@ class State:
             HK_CTXT, 'LOP Layout State', 'These keys apply to the LOP Layout State.'
         )
 
-        duplicate_key = f'{HK_CTXT}.duplicate'
-        hotkey_definitions.addCommand(duplicate_key, 'Duplicate', 'Duplicate')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, duplicate_key, ['CTRL+D'])
+        hotkey_definitions.addCommand(State.duplicate_key, 'Duplicate', 'Duplicate')
+        hotkey_definitions.addDefaultBinding(HK_CTXT, State.duplicate_key, ['CTRL+D'])
 
-        translate_key = f'{HK_CTXT}.translate'
-        hotkey_definitions.addCommand(translate_key, 'Translate', 'Translate')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, translate_key, ['T'])
+        hotkey_definitions.addCommand(State.translate_key, 'Translate', 'Translate')
+        hotkey_definitions.addDefaultBinding(HK_CTXT, State.translate_key, ['T'])
 
-        rotate_key = f'{HK_CTXT}.rotate'
-        hotkey_definitions.addCommand(rotate_key, 'Rotate', 'Rotate')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, rotate_key, ['R'])
+        hotkey_definitions.addCommand(State.rotate_key, 'Rotate', 'Rotate')
+        hotkey_definitions.addDefaultBinding(HK_CTXT, State.rotate_key, ['R'])
 
-        scale_key = f'{HK_CTXT}.scale'
-        hotkey_definitions.addCommand(scale_key, 'Scale', 'Scale')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, scale_key, ['E'])
+        hotkey_definitions.addCommand(State.scale_key, 'Scale', 'Scale')
+        hotkey_definitions.addDefaultBinding(HK_CTXT, State.scale_key, ['E'])
 
-        delete_key = f'{HK_CTXT}.delete'
-        hotkey_definitions.addCommand(delete_key, 'Remove', 'Remove')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, delete_key, ['Del'])
+        hotkey_definitions.addCommand(State.delete_key, 'Remove', 'Remove')
+        hotkey_definitions.addDefaultBinding(HK_CTXT, State.delete_key, ['Del'])
 
         template.bindHotkeyDefinitions(hotkey_definitions)
 
@@ -125,12 +125,8 @@ class State:
         """Bind menus to a template."""
 
         menu = hou.ViewerStateMenu(STATE_NAME + '_menu', STATE_LABEL)
-
-        duplicate_key = f'{HK_CTXT}.duplicate'
-        menu.addActionItem('duplicate', 'Duplicate', duplicate_key)
-
-        delete_key = f'{HK_CTXT}.delete'
-        menu.addActionItem('remove', 'Remove Edits', delete_key)
+        menu.addActionItem('duplicate', 'Duplicate', State.duplicate_key)
+        menu.addActionItem('remove', 'Remove Edits', State.delete_key)
         template.bindMenu(menu)
 
     def onEnter(self, kwargs: dict[str, Any]) -> None:
@@ -163,13 +159,13 @@ class State:
 
         hotkey = hu.hotkeySymbolOrKeyString(kwargs)
 
-        if hou.hotkeys.isKeyMatch(hotkey, f'{HK_CTXT}.translate'):
+        if hou.hotkeys.isKeyMatch(hotkey, State.translate_key):
             self.xform_handle.applySettings('translate(1)')
             return True
-        elif hou.hotkeys.isKeyMatch(hotkey, f'{HK_CTXT}.rotate'):
+        elif hou.hotkeys.isKeyMatch(hotkey, State.rotate_key):
             self.xform_handle.applySettings('rotate(1)')
             return True
-        elif hou.hotkeys.isKeyMatch(hotkey, f'{HK_CTXT}.scale'):
+        elif hou.hotkeys.isKeyMatch(hotkey, State.scale_key):
             self.xform_handle.applySettings('scale(1)')
             return True
         return False
@@ -483,7 +479,7 @@ class State:
             prim = stage.GetPrimAtPath(path)
             if prim.IsValid():
                 xformable = UsdGeom.Xformable(prim)
-                time_code = Usd.TimeCode(hou.time())
+                time_code = Usd.TimeCode(hou.frame())
                 world_transform = xformable.ComputeLocalToWorldTransform(time_code)
                 xform = hou.Matrix4([value for row in world_transform for value in row])
                 return xform
@@ -504,7 +500,7 @@ class State:
 def get_bbox_center(stage: Usd.Stage, prim_paths: Sequence[str]) -> Gf.Vec3d:
     """Return the combined bounding box center of a list of primitive paths."""
 
-    time_code = Usd.TimeCode(hou.time())
+    time_code = Usd.TimeCode(hou.frame())
     purposes = [UsdGeom.Tokens.default_]
     bbox_cache = UsdGeom.BBoxCache(time_code, purposes)
 
@@ -526,7 +522,7 @@ def get_bbox_center(stage: Usd.Stage, prim_paths: Sequence[str]) -> Gf.Vec3d:
 def get_euler_angles(stage: Usd.Stage, prim_path: str) -> Gf.Vec3d:
     """Return the rotation in euler angles of a primitive path."""
 
-    time_code = Usd.TimeCode(hou.time())
+    time_code = Usd.TimeCode(hou.frame())
     cache = UsdGeom.XformCache(time_code)
     prim = stage.GetPrimAtPath(prim_path)
 
@@ -576,7 +572,7 @@ def get_xform(parms: dict) -> hou.Matrix4:
 
 
 def get_unique_prim_path(
-        stage: Usd.Stage, path: str, existing_paths: Sequence[str]
+    stage: Usd.Stage, path: str, existing_paths: Sequence[str]
 ) -> str:
     """Return an available path under parent_path by appending an incrementing
     integer.

@@ -89,25 +89,21 @@ def layout() -> None:
         if source_path:
             source_prim = stage.GetPrimAtPath(source_path)
             if not source_prim.IsValid():
-                node.addWarning(f'Source primitive is invalid: {source_path}.')
+                node.addWarning(f'Source primitive invalid: {source_path}.')
                 continue
 
-        destination_prim = stage.GetPrimAtPath(destination_path)
-        if not destination_prim.IsValid():
+        prim = stage.GetPrimAtPath(destination_path)
+        if not prim.IsValid():
             if not source_path:
-                node.addWarning(
-                    f'Destination primitive is invalid: {destination_path}.'
-                )
                 continue
-
-            destination_prim = create_primitive(stage, destination_path, source_path)
+            prim = create_primitive(stage, destination_path, source_path)
 
         # Transforms
         translate = parent.evalParmTuple(f't{index}')
         rotate = parent.evalParmTuple(f'r{index}')
         scale = parent.evalParmTuple(f's{index}')
 
-        set_transform(destination_prim, translate, rotate, scale)
+        set_transform(prim, translate, rotate, scale)
 
 
 layout()

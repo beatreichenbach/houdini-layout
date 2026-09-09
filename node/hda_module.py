@@ -67,11 +67,13 @@ class FindReplaceDialog(QtWidgets.QDialog):
         destination = self._destination_check.isChecked()
         source = self._source_check.isChecked()
         regex = self._regex_check.isChecked()
-        find = self._from_field.value()
-        replace = self._to_field.value()
+        find = str(self._from_field.value())
+        replace = str(self._to_field.value())
 
-        node = hou.pwd()
+        node: hou.OpNode = hou.pwd()
         multi_parm = node.parm('primitives')
+        if multi_parm is None:
+            return
         count = multi_parm.evalAsInt()
         offset = multi_parm.multiParmStartOffset()
 
@@ -80,11 +82,13 @@ class FindReplaceDialog(QtWidgets.QDialog):
 
             if destination:
                 parm = node.parm(f'destinationprim{index}')
-                value = self._find_and_replace(parm.eval(), find, replace, regex)
+                path = parm.evalAsString()
+                value = self._find_and_replace(path, find, replace, regex)
                 parm.set(value)
             if source:
                 parm = node.parm(f'sourceprim{index}')
-                value = self._find_and_replace(parm.eval(), find, replace, regex)
+                path = parm.evalAsString()
+                value = self._find_and_replace(path, find, replace, regex)
                 parm.set(value)
 
     @staticmethod
@@ -108,8 +112,11 @@ def open_dialog():
 def remove_missing() -> None:
     """Remove missing primitives."""
 
-    node = hou.pwd()
+    node: hou.LopNode = hou.pwd()
     multi_parm = node.parm('primitives')
+    if not multi_parm:
+        return
+
     count = multi_parm.evalAsInt()
     offset = multi_parm.multiParmStartOffset()
 

@@ -48,4 +48,5 @@ Either filter by "layout" or navigate to "Houdini > Panes > Geometry Viewers" to
 
 ## License
 
-MIT License. Copyright 2026 - Beat Reichenbach. See the [License](LICENSE) file for details.
+Copyright (c) 2026 Beat Reichenbach.
+This project is licensed under the [GPLv3 License](LICENSE).

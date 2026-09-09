@@ -1,6 +1,7 @@
 # Layout
 
-A layout tool kit for SideFX Houdini.
+A layout LOP node for SideFX Houdini.
+
 This HDA allows to transform and duplicate primitives in the stage while exposing all edits in a simple interface that
 can be edited.
 
@@ -28,11 +29,21 @@ Layout is installed as a Houdini Package.
             └── (HDA files)
 ```
 
+## Hotkeys
+
+[Configure the hotkeys](https://www.sidefx.com/docs/houdini/basics/hotkeys.html) by binding the T, R, E keys to the
+Layout (Translate), Layout (Rotate), Layout (Scale) actions respectively.
+
+Either filter by "layout" or navigate to "Houdini > Panes > Geometry Viewers" to find the actions.
+
+![Hotkeys](.github/assets/hotkeys.png)
+
 ## About this Repository
 
 | Directory | Description                                                                                                         |
 |-----------|---------------------------------------------------------------------------------------------------------------------|
 | `src/`    | Digital Assets and the package definition. During the release action they get packaged in the `layout.zip` archive. |
+| `node/`   | The source code for the ViewerState and the HDA Module which is stored in the HDA.                                  |
 | `build/`  | Build directory used to generate the release package.                                                               |
 
 ## License

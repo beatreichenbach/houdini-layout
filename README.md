@@ -42,7 +42,19 @@ Layout is installed as a Houdini Package.
 [Configure the hotkeys](https://www.sidefx.com/docs/houdini/basics/hotkeys.html) by binding the T, R, E keys to the
 Layout (Translate), Layout (Rotate), Layout (Scale) actions respectively.
 
-Either filter by "layout" or navigate to "Houdini > Panes > Geometry Viewers" to find the actions.
+1. Right-click the Layout HDA and open the
+   (Type Properties)(https://www.sidefx.com/docs/houdini/ref/windows/optype.html#tools) window.
+2. Navigate to the "Interactive > Shelf Tools" section.
+3. Select the tools and set the hotkey for the "Scene Viewer".
+4. When done, press "Cancel" as the hotkeys are not stored in the HDA definition.
+5. Once set up, the hotkeys are available to edit in the Hotkey editor.
+   Either filter by "layout" or navigate to "Houdini > Panes > Geometry Viewers" to find the actions.
+
+**Type Properties**
+
+![Hotkeys](.github/assets/type_properties.png)
+
+**Hotkey Editor**
 
 ![Hotkeys](.github/assets/hotkeys.png)
 

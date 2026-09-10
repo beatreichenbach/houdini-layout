@@ -97,6 +97,7 @@ class TransformParms:
         scale = components['scale']
 
         if sanitize:
+            translate = [v * (abs(v) > TOLERANCE) for v in translate]
             rotate = [v * (abs(v) > TOLERANCE) for v in rotate]
 
         self.translate.set(hou.Vector3(translate))
@@ -186,10 +187,9 @@ class State:
     def onEnter(self, kwargs: dict[str, Any]) -> None:
         """Called when the state is entered from an existing node."""
 
-        try:
-            node = kwargs['node']
-            self._init_node(node)
-        except AssertionError:
+        self._init_node(kwargs['node'])
+
+        if not self._is_valid():
             return
 
         self.scene_viewer.hudInfo(show=True, template=HUD_TEMPLATE)
@@ -293,19 +293,16 @@ class State:
         return True
 
     def _is_valid(self) -> bool:
-        """Return whether the current node/stage/network is valid."""
+        """Return whether the current state viewer is valid."""
 
         return self.node is not None
 
-    def _init_node(self, node: hou.LopNode) -> None:
-        """
-        Initialize the node.
+    def _init_node(self, node: hou.OpNode) -> None:
+        """Initialize the node."""
 
-        :raises ValueError: if the node is not the HDA type.
-        """
+        if node.type() != NODE_TYPE:
+            return
 
-        assert isinstance(node, hou.LopNode)
-        assert 'beat::layout' in node.type().name()
         self.node = node
 
         # Initial mode
@@ -335,6 +332,14 @@ class State:
     def _apply_transforms(self) -> None:
         """Apply the temporary transforms to the multi parm."""
 
+        input_node = self.node.node('IN_transform')
+        if input_node is None:
+            return
+
+        stage = input_node.stage()
+        if stage is None:
+            return
+
         temp = self._get_temp()
         instances = self._get_instances()
 
@@ -342,16 +347,24 @@ class State:
         pattern = prim_parm.evalAsString()
         selection = pattern.split(' ')
 
-        xform = temp.get_xform()
+        delta_xform = temp.get_xform()
+
+        time_code = Usd.TimeCode(hou.frame())
+        cache = UsdGeom.XformCache(time_code)
 
         for path in selection:
             instance = instances.get(path)
             if instance is None:
                 instance = self._add_primitive(path)
 
+            prim = stage.GetPrimAtPath(path)
+            world_matrix_usd = cache.GetLocalToWorldTransform(prim)
+
+            world_matrix = hou.Matrix4(world_matrix_usd)
+            local_matrix = world_matrix * delta_xform * world_matrix.inverted()
             previous_xform = instance.get_xform()
-            new_xform = previous_xform * xform
-            instance.set_xform(new_xform, sanitize=True)
+            xform = previous_xform * local_matrix
+            instance.set_xform(xform, sanitize=True)
 
         prim_parm.revertToDefaults()
         temp.revert()
@@ -445,13 +458,14 @@ class State:
         if len(selection) == 1:
             path = selection[0]
 
-            pivot, rotation = get_pivot(stage=stage, path=path)
-            kwargs['parms']['px'] = pivot[0]
-            kwargs['parms']['py'] = pivot[1]
-            kwargs['parms']['pz'] = pivot[2]
-            kwargs['parms']['pivot_rx'] = rotation[0]
-            kwargs['parms']['pivot_ry'] = rotation[1]
-            kwargs['parms']['pivot_rz'] = rotation[2]
+            pivot = get_pivot(stage=stage, path=path)
+            components = pivot.explode()
+            kwargs['parms']['px'] = components['translate'][0]
+            kwargs['parms']['py'] = components['translate'][1]
+            kwargs['parms']['pz'] = components['translate'][2]
+            kwargs['parms']['pivot_rx'] = components['rotate'][0]
+            kwargs['parms']['pivot_ry'] = components['rotate'][1]
+            kwargs['parms']['pivot_rz'] = components['rotate'][2]
         else:
             center = get_bbox_center(stage=stage, paths=selection)
             kwargs['parms']['px'] = center[0]
@@ -574,30 +588,19 @@ def get_bbox_center(stage: Usd.Stage, paths: Sequence[str]) -> Gf.Vec3d:
     return center
 
 
-def get_pivot(stage: Usd.Stage, path: str) -> tuple[Gf.Vec3d, Gf.Vec3d]:
-    """Return the position and rotation for the pivot of a primitive."""
+def get_pivot(stage: Usd.Stage, path: str) -> hou.Matrix4:
+    """Return the transform for the pivot of a primitive."""
 
     prim = stage.GetPrimAtPath(path)
     if prim.IsValid():
-        xform_api = UsdGeom.XformCommonAPI(prim)
         xformable = UsdGeom.Xformable(prim)
         time_code = Usd.TimeCode(hou.frame())
         world_matrix = xformable.ComputeLocalToWorldTransform(time_code)
-        _t, _r, _s, pivot, _ro = xform_api.GetXformVectors(time_code)
-        pivot_world = world_matrix.Transform(Gf.Vec3d(pivot))
-
-        rotation = world_matrix.RemoveScaleShear().ExtractRotation()
-
-        # NOTE: The usd rotation is reversed.
-        euler_angles = rotation.Decompose(
-            Gf.Vec3d.ZAxis(), Gf.Vec3d.YAxis(), Gf.Vec3d.XAxis()
-        )
-        euler_angles[0], euler_angles[2] = euler_angles[2], euler_angles[0]
+        pivot = hou.Matrix4(world_matrix)
     else:
-        euler_angles = Gf.Vec3d(0, 0, 0)
-        pivot_world = Gf.Vec3d(0, 0, 0)
+        pivot = hou.Matrix4(1)
 
-    return pivot_world, euler_angles
+    return pivot
 
 
 def get_unique_prim_path(

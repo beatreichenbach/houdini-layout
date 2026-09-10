@@ -7,6 +7,14 @@ can be edited.
 
 ![Screenshot](.github/assets/screenshot.png)
 
+Features compared to SideFX's Edit node:
+
+- Store edits in local space in user accessible parameters that can be edited.
+- Change primitive paths after editing. This is useful when the input hierarchy or primitive names change.
+- Duplicate nodes similar to the stage manager.
+- Clean up unused edits of primitives that no longer exists.
+- Simple controls without physics make the node more stable.
+
 ## Installation
 
 Layout is installed as a Houdini Package.

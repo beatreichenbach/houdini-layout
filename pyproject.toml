@@ -1,7 +1,7 @@
 [project]
 name = "houdini-layout"
 version = "0.1.0"
-description = "Houdini HDA to transform and duplicate primitives in the stage"
+description = "A Digital Asset (HDA) for Solaris in SideFX Houdini. It is used to transform and duplicate primitives in the stage."
 requires-python = ">=3.11, <3.12"
 
 [build-system]

@@ -101,7 +101,7 @@ class FindReplaceDialog(QtWidgets.QDialog):
             return text.replace(find, replace)
 
 
-def open_dialog():
+def find_and_replace():
     """Open the Find and Replace Dialog."""
 
     dialog = FindReplaceDialog()
@@ -113,15 +113,13 @@ def remove_missing() -> None:
     """Remove missing primitives."""
 
     node: hou.LopNode = hou.pwd()
-    multi_parm = node.parm('primitives')
-    if not multi_parm:
+    stage = node.stage()
+    if stage is None:
         return
 
+    multi_parm = node.parm('primitives')
     count = multi_parm.evalAsInt()
     offset = multi_parm.multiParmStartOffset()
-
-    stage = node.stage()
-
     for i in reversed(range(count)):
         index = offset + i
 
@@ -139,6 +137,33 @@ def remove_missing() -> None:
         if not prim.IsValid():
             multi_parm.removeMultiParmInstance(i)
             continue
+
+
+def remove_duplicates() -> None:
+    """Remove duplicate primitives."""
+
+    node: hou.LopNode = hou.pwd()
+    stage = node.stage()
+    if stage is None:
+        return
+
+    multi_parm = node.parm('primitives')
+    count = multi_parm.evalAsInt()
+    offset = multi_parm.multiParmStartOffset()
+
+    paths = []
+    duplicate_indices = []
+    for i in range(count):
+        index = offset + i
+
+        path = node.evalParm(f'destinationprim{index}')
+        if path in paths:
+            duplicate_indices.append(i)
+        else:
+            paths.append(path)
+
+    for i in reversed(duplicate_indices):
+        multi_parm.removeMultiParmInstance(i)
 
 
 T = TypeVar('T', bound=hou.paneTabType)

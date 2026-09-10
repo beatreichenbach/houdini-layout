@@ -74,7 +74,7 @@ def get_unique_xform_op_suffix(xformable: UsdGeom.Xformable, suffix: str) -> str
     return unique_suffix
 
 
-def layout() -> None:
+def transform_primitives() -> None:
     """Create duplicate primitives from the layout node."""
 
     node: hou.LopNode = hou.pwd()
@@ -84,6 +84,7 @@ def layout() -> None:
         return
 
     suffixes: dict[str, str] = {}
+    transformed_primitives = []
 
     multi_parm = parent.parm('primitives')
     count = multi_parm.evalAsInt()
@@ -98,7 +99,13 @@ def layout() -> None:
 
         destination_prim = stage.GetPrimAtPath(destination_path)
         if not destination_prim.IsValid():
-            node.addWarning(f'Primitive is invalid: {destination_path}.')
+            node.addWarning(f'Invalid primitive: {destination_path}.')
+            continue
+
+        if destination_path in transformed_primitives:
+            node.addWarning(
+                f'Ignoring duplicate entries for primitive: {destination_path}.'
+            )
             continue
 
         # Transforms
@@ -113,6 +120,7 @@ def layout() -> None:
             suffixes[destination_path] = suffix
 
         set_transform(xformable, translate, rotate, scale, suffix)
+        transformed_primitives.append(destination_path)
 
 
-layout()
+transform_primitives()

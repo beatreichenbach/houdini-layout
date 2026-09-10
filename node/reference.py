@@ -12,6 +12,7 @@ def create_references() -> None:
         return
 
     root_layer_id = stage.GetRootLayer().identifier
+    created_references = []
 
     multi_parm = parent.parm('primitives')
     count = multi_parm.evalAsInt()
@@ -31,13 +32,17 @@ def create_references() -> None:
         if source_path:
             source_prim = stage.GetPrimAtPath(source_path)
             if not source_prim.IsValid():
-                node.addWarning(f'Source primitive is invalid: {source_path}.')
+                node.addWarning(f'Invalid source primitive: {source_path}.')
+                continue
+
+            if destination_path in created_references:
                 continue
 
             # Create reference
             destination_prim = stage.DefinePrim(destination_path)
             references = destination_prim.GetReferences()
             references.AddReference(root_layer_id, Sdf.Path(source_path))
+            created_references.append(destination_path)
 
 
 create_references()

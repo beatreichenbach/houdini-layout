@@ -345,14 +345,18 @@ class State:
 
         prim_parm = self.node.parm('primpattern')
         pattern = prim_parm.evalAsString()
-        selection = pattern.split(' ')
-
         delta_xform = temp.get_xform()
 
+        # Revert internal parms and variables
+        prim_parm.revertToDefaults()
+        temp.revert()
+        self._previous_xform = None
+
+        # Apply transform in local space to parameters
         time_code = Usd.TimeCode(hou.frame())
         cache = UsdGeom.XformCache(time_code)
-
-        for path in selection:
+        paths = pattern.split(' ')
+        for path in paths:
             instance = instances.get(path)
             if instance is None:
                 instance = self._add_primitive(path)
@@ -365,11 +369,6 @@ class State:
             previous_xform = instance.get_xform()
             xform = previous_xform * local_matrix
             instance.set_xform(xform, sanitize=True)
-
-        prim_parm.revertToDefaults()
-        temp.revert()
-
-        self._previous_xform = None
 
     def _move_primitives(self, xform: hou.Matrix4) -> None:
         """Move selected primitives by the xform."""

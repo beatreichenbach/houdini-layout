@@ -1,4 +1,4 @@
-# Layout
+# Houdini Layout
 
 A layout LOP node for SideFX Houdini.
 

@@ -1,5 +1,5 @@
 import hou
-from pxr import Sdf, Usd
+from pxr import Sdf, UsdShade
 
 
 def create_references() -> None:
@@ -43,6 +43,13 @@ def create_references() -> None:
             references = destination_prim.GetReferences()
             references.AddReference(root_layer_id, Sdf.Path(source_path))
             created_references.append(destination_path)
+
+            # Bind Materials
+            binding_api = UsdShade.MaterialBindingAPI(source_prim)
+            bound_material, _relationship = binding_api.ComputeBoundMaterial()
+            if bound_material:
+                dest_binding_api = UsdShade.MaterialBindingAPI.Apply(destination_prim)
+                dest_binding_api.Bind(bound_material)
 
 
 create_references()

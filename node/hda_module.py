@@ -1,5 +1,5 @@
 import re
-from typing import TypeVar
+from typing import cast
 
 import hou
 from hutil.Qt import QtCore, QtWidgets
@@ -70,7 +70,7 @@ class FindReplaceDialog(QtWidgets.QDialog):
         find = str(self._from_field.value())
         replace = str(self._to_field.value())
 
-        node: hou.OpNode = hou.pwd()
+        node = cast(hou.LopNode, hou.pwd())
         multi_parm = node.parm('primitives')
         if multi_parm is None:
             return
@@ -81,12 +81,12 @@ class FindReplaceDialog(QtWidgets.QDialog):
             index = offset + i
 
             if destination:
-                parm = node.parm(f'destinationprim{index}')
+                parm = cast(hou.Parm, node.parm(f'destinationprim{index}'))
                 path = parm.evalAsString()
                 value = self._find_and_replace(path, find, replace, regex)
                 parm.set(value)
             if source:
-                parm = node.parm(f'sourceprim{index}')
+                parm = cast(hou.Parm, node.parm(f'sourceprim{index}'))
                 path = parm.evalAsString()
                 value = self._find_and_replace(path, find, replace, regex)
                 parm.set(value)
@@ -112,24 +112,24 @@ def find_and_replace():
 def remove_missing() -> None:
     """Remove missing primitives."""
 
-    node: hou.LopNode = hou.pwd()
+    node = cast(hou.LopNode, hou.pwd())
     stage = node.stage()
     if stage is None:
         return
 
-    multi_parm = node.parm('primitives')
+    multi_parm = cast(hou.Parm, node.parm('primitives'))
     count = multi_parm.evalAsInt()
     offset = multi_parm.multiParmStartOffset()
     for i in reversed(range(count)):
         index = offset + i
 
-        path = node.evalParm(f'destinationprim{index}')
+        path = cast(str, node.evalParm(f'destinationprim{index}'))
         prim = stage.GetPrimAtPath(path)
         if not prim.IsValid():
             multi_parm.removeMultiParmInstance(i)
             continue
 
-        path = node.evalParm(f'sourceprim{index}')
+        path = cast(str, node.evalParm(f'sourceprim{index}'))
         if not path:
             continue
 
@@ -142,12 +142,12 @@ def remove_missing() -> None:
 def remove_duplicates() -> None:
     """Remove duplicate primitives."""
 
-    node: hou.LopNode = hou.pwd()
+    node = cast(hou.LopNode, hou.pwd())
     stage = node.stage()
     if stage is None:
         return
 
-    multi_parm = node.parm('primitives')
+    multi_parm = cast(hou.Parm, node.parm('primitives'))
     count = multi_parm.evalAsInt()
     offset = multi_parm.multiParmStartOffset()
 
@@ -166,10 +166,7 @@ def remove_duplicates() -> None:
         multi_parm.removeMultiParmInstance(i)
 
 
-T = TypeVar('T', bound=hou.paneTabType)
-
-
-def get_pane_tab(pane_tab_type: type[T]) -> T | None:
+def get_pane_tab(pane_tab_type: hou.EnumValue) -> hou.PaneTab | None:
     """Return the active SceneViewer."""
 
     pane_tab = hou.ui.paneTabUnderCursor()
@@ -183,13 +180,13 @@ def get_pane_tab(pane_tab_type: type[T]) -> T | None:
     return None
 
 
-def get_layout_node(pwd: hou.Node, node_type_name: str) -> hou.Node | None:
+def get_layout_node(pwd: hou.LopNode, node_type_name: str) -> hou.LopNode | None:
     """Return a Layout node. Create it if needed."""
 
     selection = hou.selectedNodes()
 
-    if selection:
-        current_node = selection[0]
+    if selection and isinstance(selection[0], hou.LopNode):
+        current_node = cast(hou.LopNode, selection[0])
     else:
         current_node = pwd.displayNode()
 
@@ -210,13 +207,17 @@ def get_layout_node(pwd: hou.Node, node_type_name: str) -> hou.Node | None:
 def enter_state(node_type_name: str, mode: str) -> None:
     """Enter the edit state of the Layout node. Create a node if needed."""
 
-    scene_viewer = get_pane_tab(hou.paneTabType.SceneViewer)
+    scene_viewer = cast(hou.SceneViewer, get_pane_tab(hou.paneTabType.SceneViewer))
 
     if scene_viewer is None:
         return
 
     node_type = hou.nodeType(hou.lopNodeTypeCategory(), node_type_name)
-    viewer_state = node_type.definition().sections()['DefaultState'].contents()
+    if node_type is None:
+        return
+
+    node_type_definition = node_type.definition()
+    viewer_state = node_type_definition.sections()['DefaultState'].contents()
     if scene_viewer.currentState() not in ('lopview', viewer_state):
         if mode == 'translate':
             scene_viewer.enterTranslateToolState()
@@ -226,11 +227,16 @@ def enter_state(node_type_name: str, mode: str) -> None:
             scene_viewer.enterScaleToolState()
         return
 
-    network_editor = get_pane_tab(hou.paneTabType.NetworkEditor)
+    network_editor = cast(
+        hou.NetworkEditor, get_pane_tab(hou.paneTabType.NetworkEditor)
+    )
     if not network_editor:
         return
 
     pwd = network_editor.pwd()
+    if not isinstance(pwd, hou.LopNode):
+        return
+
     node = get_layout_node(pwd, node_type_name)
     if node is None:
         return

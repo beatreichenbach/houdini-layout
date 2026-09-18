@@ -1,3 +1,5 @@
+from typing import cast
+
 import hou
 from pxr import Sdf, UsdShade
 
@@ -5,8 +7,8 @@ from pxr import Sdf, UsdShade
 def create_references() -> None:
     """Create duplicate primitives from the layout node."""
 
-    node: hou.LopNode = hou.pwd()
-    parent = node.parent()
+    node = cast(hou.LopNode, hou.pwd())
+    parent = cast(hou.LopNode, node.parent())
     stage = node.editableStage()
     if stage is None:
         return
@@ -14,13 +16,13 @@ def create_references() -> None:
     root_layer_id = stage.GetRootLayer().identifier
     created_references = []
 
-    multi_parm = parent.parm('primitives')
+    multi_parm = cast(hou.Parm, parent.parm('primitives'))
     count = multi_parm.evalAsInt()
     offset = multi_parm.multiParmStartOffset()
     for i in range(count):
         index = offset + i
-        destination_path = parent.evalParm(f'destinationprim{index}')
-        source_path = parent.evalParm(f'sourceprim{index}')
+        destination_path = cast(str, parent.evalParm(f'destinationprim{index}'))
+        source_path = cast(str, parent.evalParm(f'sourceprim{index}'))
 
         if not destination_path:
             continue

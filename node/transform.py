@@ -1,4 +1,5 @@
 import re
+from typing import cast
 
 import hou
 from pxr import Gf, UsdGeom
@@ -11,9 +12,9 @@ Z_AXIS = Gf.Vec3d.ZAxis()
 
 def set_transform(
     xformable: UsdGeom.Xformable,
-    translate: tuple[float, float, float],
-    rotate: tuple[float, float, float],
-    scale: tuple[float, float, float],
+    translate: Gf.Vec3d,
+    rotate: Gf.Vec3d,
+    scale: Gf.Vec3d,
     suffix: str,
 ) -> None:
     """Set the transform on a primitive."""
@@ -77,8 +78,8 @@ def get_unique_xform_op_suffix(xformable: UsdGeom.Xformable, suffix: str) -> str
 def transform_primitives() -> None:
     """Create duplicate primitives from the layout node."""
 
-    node: hou.LopNode = hou.pwd()
-    parent = node.parent()
+    node = cast(hou.LopNode, hou.pwd())
+    parent = cast(hou.LopNode, node.parent())
     stage = node.editableStage()
     if stage is None:
         return
@@ -86,13 +87,13 @@ def transform_primitives() -> None:
     suffixes: dict[str, str] = {}
     transformed_primitives = []
 
-    multi_parm = parent.parm('primitives')
+    multi_parm = cast(hou.Parm, parent.parm('primitives'))
     count = multi_parm.evalAsInt()
     offset = multi_parm.multiParmStartOffset()
     for i in range(count):
         index = offset + i
-        destination_path = parent.evalParm(f'destinationprim{index}')
-        source_path = parent.evalParm(f'sourceprim{index}')
+        destination_path = cast(str, parent.evalParm(f'destinationprim{index}'))
+        source_path = cast(str, parent.evalParm(f'sourceprim{index}'))
 
         if not destination_path:
             continue
@@ -113,6 +114,9 @@ def transform_primitives() -> None:
         translate = parent.evalParmTuple(f't{index}')
         rotate = parent.evalParmTuple(f'r{index}')
         scale = parent.evalParmTuple(f's{index}')
+        translate = Gf.Vec3d(cast(tuple[float, float, float], translate))
+        rotate = Gf.Vec3d(cast(tuple[float, float, float], rotate))
+        scale = Gf.Vec3d(cast(tuple[float, float, float], scale))
 
         suffix = suffixes.get(source_path)
         if suffix is None:

@@ -15,6 +15,8 @@ Features compared to SideFX's Edit node:
 - Clean up unused edits of primitives that no longer exists.
 - Simple controls without physics make the node more stable.
 
+For a quick demo, see this [YouTube video](https://www.youtube.com/watch?v=zdEJcyOmgTg).
+
 ## Installation
 
 Layout is installed as a Houdini Package.

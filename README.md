@@ -59,14 +59,6 @@ Layout (Translate), Layout (Rotate), Layout (Scale) actions respectively.
 
 ![Hotkeys](.github/assets/hotkeys.png)
 
-## About this Repository
-
-| Directory | Description                                                                                                         |
-|-----------|---------------------------------------------------------------------------------------------------------------------|
-| `src/`    | Digital Assets and the package definition. During the release action they get packaged in the `layout.zip` archive. |
-| `node/`   | The source code for the ViewerState and the HDA Module which is stored in the HDA.                                  |
-| `build/`  | Build directory used to generate the release package.                                                               |
-
 ## License
 
 Copyright (c) 2026 Beat Reichenbach.

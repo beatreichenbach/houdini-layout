@@ -1,23 +1,26 @@
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import hou
-import stateutils as su
-import viewerhandle.utils as hu
+import stateutils as su  # ty: ignore[unresolved-import]
+import viewerhandle.utils as hu  # ty: ignore[unresolved-import]
 from pxr import Gf, Usd, UsdGeom
 
 
 def get_state_name(node_type: hou.OpNodeType) -> str:
     """Return the default state name."""
 
-    sections = node_type.definition().sections()
+    definition = node_type.definition()
+    if definition is None:
+        raise RuntimeError('invalid node definition')
+    sections = definition.sections()
     state_name = sections['DefaultState'].contents()
     return state_name
 
 
-NODE_TYPE: hou.OpNodeType = kwargs['type']  # noqa: F821
+NODE_TYPE: hou.OpNodeType = kwargs['type']  # noqa: F821  # ty: ignore[unresolved-reference]
 STATE_NAME = get_state_name(NODE_TYPE)
 STATE_LABEL = 'Layout'
 STATE_CATEGORY = hou.lopNodeTypeCategory()
@@ -100,9 +103,9 @@ class TransformParms:
             translate = [v * (abs(v) > TOLERANCE) for v in translate]
             rotate = [v * (abs(v) > TOLERANCE) for v in rotate]
 
-        self.translate.set(hou.Vector3(translate))
-        self.rotate.set(hou.Vector3(rotate))
-        self.scale.set(hou.Vector3(scale))
+        self.translate.set([translate[0], translate[1], translate[2]])
+        self.rotate.set([rotate[0], rotate[1], rotate[2]])
+        self.scale.set([scale[0], scale[1], scale[2]])
 
     def revert(self) -> None:
         """Revert all parms to defaults."""
@@ -132,7 +135,7 @@ class State:
         self.scene_viewer = scene_viewer
 
         self.xform_handle = hou.Handle(self.scene_viewer, 'Xform')
-        self.node = None
+        self.node: hou.LopNode | None = None
 
         self._previous_xform = None
 
@@ -142,7 +145,7 @@ class State:
 
         handle_type = 'xform'
         handle_name = 'Xform'
-        template.bindHandle(handle_type, handle_name, cache_previous_parms=True)
+        template.bindHandle(handle_type, handle_name, cache_previous_parms=True)  # ty: ignore[unknown-argument]
         template.bindSupportsSelectionChange(True)
 
     @staticmethod
@@ -180,8 +183,8 @@ class State:
         """Bind menus to a template."""
 
         menu = hou.ViewerStateMenu(STATE_NAME + '_menu', STATE_LABEL)
-        menu.addActionItem('duplicate', 'Duplicate', State.duplicate_key)
-        menu.addActionItem('remove', 'Remove Edits', State.delete_key)
+        menu.addActionItem('duplicate', 'Duplicate', State.duplicate_key)  # ty: ignore[too-many-positional-arguments]
+        menu.addActionItem('remove', 'Remove Edits', State.delete_key)  # ty: ignore[too-many-positional-arguments]
         template.bindMenu(menu)
 
     def onEnter(self, kwargs: dict[str, Any]) -> None:
@@ -192,14 +195,14 @@ class State:
         if not self._is_valid():
             return
 
-        self.scene_viewer.hudInfo(show=True, template=HUD_TEMPLATE)
+        self.scene_viewer.hudInfo(show=True, template=HUD_TEMPLATE)  # ty: ignore[unresolved-attribute]
 
     def onExit(self, kwargs: dict[str, Any]) -> None:
         """Called when the state is about to be exited."""
 
         self.node = None
 
-    def onKeyEvent(self, kwargs) -> bool:
+    def onKeyEvent(self, kwargs: dict[str, Any]) -> bool:
         """Called for key events."""
 
         hotkey = hu.hotkeySymbolOrKeyString(kwargs)
@@ -292,18 +295,13 @@ class State:
         self.xform_handle.update()
         return True
 
-    def _is_valid(self) -> bool:
-        """Return whether the current state viewer is valid."""
-
-        return self.node is not None
-
     def _init_node(self, node: hou.OpNode) -> None:
         """Initialize the node."""
 
         if node.type() != NODE_TYPE:
             return
 
-        self.node = node
+        self.node = cast(hou.LopNode, node)
 
         # Initial mode
         mode = node.cachedUserData('mode')
@@ -319,6 +317,7 @@ class State:
     def _init_transforms(self) -> None:
         """Initialize the temporary transforms."""
 
+        assert self.node is not None
         network = get_lop_network(self.node)
         stage = self.node.stage()
         if network is None or stage is None:
@@ -327,13 +326,14 @@ class State:
         selection = get_selection(network, stage)
 
         paths = ' '.join(selection)
-        self.node.parm('primpattern').set(paths)
+        self._parm('primpattern').set(paths)
 
     def _apply_transforms(self) -> None:
         """Apply the temporary transforms to the multi parm."""
 
+        assert self.node is not None
         input_node = self.node.node('IN_transform')
-        if input_node is None:
+        if not isinstance(input_node, hou.LopNode):
             return
 
         stage = input_node.stage()
@@ -343,7 +343,7 @@ class State:
         temp = self._get_temp()
         instances = self._get_instances()
 
-        prim_parm = self.node.parm('primpattern')
+        prim_parm = self._parm('primpattern')
         pattern = prim_parm.evalAsString()
         delta_xform = temp.get_xform()
 
@@ -364,7 +364,7 @@ class State:
             prim = stage.GetPrimAtPath(path)
             world_matrix_usd = cache.GetLocalToWorldTransform(prim)
 
-            world_matrix = hou.Matrix4(world_matrix_usd)
+            world_matrix = hou.Matrix4(world_matrix_usd)  # ty: ignore[invalid-argument-type]
             local_matrix = world_matrix * delta_xform * world_matrix.inverted()
             previous_xform = instance.get_xform()
             xform = previous_xform * local_matrix
@@ -391,6 +391,7 @@ class State:
     def _duplicate_primitives(self) -> None:
         """Duplicate a primitive."""
 
+        assert self.node is not None
         network = get_lop_network(self.node)
         stage = self.node.stage()
         if network is None or stage is None:
@@ -413,6 +414,7 @@ class State:
     def _remove_primitives(self) -> None:
         """Remove the edits for primitives."""
 
+        assert self.node is not None
         network = get_lop_network(self.node)
         stage = self.node.stage()
         if network is None or stage is None:
@@ -420,7 +422,7 @@ class State:
 
         selection = get_selection(network, stage)
 
-        multi_parm = self.node.parm('primitives')
+        multi_parm = self._parm('primitives')
         count = multi_parm.evalAsInt()
         offset = multi_parm.multiParmStartOffset()
 
@@ -436,9 +438,10 @@ class State:
 
         self.scene_viewer.endStateUndo()
 
-    def _update_pivot(self, kwargs: dict) -> None:
+    def _update_pivot(self, kwargs: dict[str, Any]) -> None:
         """Update the handle's pivot to the current selection."""
 
+        assert self.node is not None
         network = get_lop_network(self.node)
         stage = self.node.stage()
         if network is None or stage is None:
@@ -477,7 +480,7 @@ class State:
         """Add a primitive to the multi parm."""
 
         # Add primitive
-        multi_parm = self.node.parm('primitives')
+        multi_parm = self._parm('primitives')
 
         offset = multi_parm.multiParmStartOffset()
         count = multi_parm.evalAsInt()
@@ -486,11 +489,11 @@ class State:
 
         # Set parameters
         instance = PrimInstance(
-            destinationprim=self.node.parm(f'destinationprim{index}'),
-            sourceprim=self.node.parm(f'sourceprim{index}'),
-            translate=self.node.parmTuple(f't{index}'),
-            rotate=self.node.parmTuple(f'r{index}'),
-            scale=self.node.parmTuple(f's{index}'),
+            destinationprim=self._parm(f'destinationprim{index}'),
+            sourceprim=self._parm(f'sourceprim{index}'),
+            translate=self._parm_tuple(f't{index}'),
+            rotate=self._parm_tuple(f'r{index}'),
+            scale=self._parm_tuple(f's{index}'),
         )
 
         instance.destinationprim.set(path)
@@ -514,16 +517,16 @@ class State:
         """Return the temporary parameters."""
 
         temp = TransformParms(
-            translate=self.node.parmTuple('t'),
-            rotate=self.node.parmTuple('r'),
-            scale=self.node.parmTuple('s'),
+            translate=self._parm_tuple('t'),
+            rotate=self._parm_tuple('r'),
+            scale=self._parm_tuple('s'),
         )
         return temp
 
     def _get_instances(self) -> dict[str, PrimInstance]:
         """Return a dictionary of all primitive parameters."""
 
-        multi_parm = self.node.parm('primitives')
+        multi_parm = self._parm('primitives')
         count = multi_parm.evalAsInt()
         offset = multi_parm.multiParmStartOffset()
 
@@ -532,11 +535,11 @@ class State:
             index = offset + i
 
             instance = PrimInstance(
-                destinationprim=self.node.parm(f'destinationprim{index}'),
-                sourceprim=self.node.parm(f'sourceprim{index}'),
-                translate=self.node.parmTuple(f't{index}'),
-                rotate=self.node.parmTuple(f'r{index}'),
-                scale=self.node.parmTuple(f's{index}'),
+                destinationprim=self._parm(f'destinationprim{index}'),
+                sourceprim=self._parm(f'sourceprim{index}'),
+                translate=self._parm_tuple(f't{index}'),
+                rotate=self._parm_tuple(f'r{index}'),
+                scale=self._parm_tuple(f's{index}'),
             )
             destination_path = instance.destinationprim.evalAsString()
             instances[destination_path] = instance
@@ -555,6 +558,27 @@ class State:
                 instances.pop(path, None)
                 return self._get_source_path(source_path, instances)
         return path
+
+    def _is_valid(self) -> bool:
+        """Return whether the current state viewer is valid."""
+
+        return self.node is not None
+
+    def _parm(self, name: str) -> hou.Parm:
+        """Return a parameter by name."""
+
+        assert self.node is not None
+        parm = self.node.parm(name)
+        assert parm is not None
+        return parm
+
+    def _parm_tuple(self, name: str) -> hou.ParmTuple:
+        """Return a parameter tuple by name."""
+
+        assert self.node is not None
+        parm_tuple = self.node.parmTuple(name)
+        assert parm_tuple is not None
+        return parm_tuple
 
 
 def get_selection(network: hou.LopNetwork, stage: Usd.Stage) -> tuple[str, ...]:
@@ -595,7 +619,7 @@ def get_pivot(stage: Usd.Stage, path: str) -> hou.Matrix4:
         xformable = UsdGeom.Xformable(prim)
         time_code = Usd.TimeCode(hou.frame())
         world_matrix = xformable.ComputeLocalToWorldTransform(time_code)
-        pivot = hou.Matrix4(world_matrix)
+        pivot = hou.Matrix4(world_matrix)  # ty: ignore[invalid-argument-type]
     else:
         pivot = hou.Matrix4(1)
 
@@ -625,7 +649,7 @@ def get_unique_prim_path(
     raise RuntimeError(f'Exceeded maximum limit of {MAX_ITERATIONS} iterations.')
 
 
-def get_xform_from_parms(parms: dict) -> hou.Matrix4:
+def get_xform_from_parms(parms: dict[str, Any]) -> hou.Matrix4:
     """Return a transform matrix built from parameter values."""
 
     transform_dict = {

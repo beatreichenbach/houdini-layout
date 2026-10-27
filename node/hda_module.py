@@ -2,7 +2,7 @@ import re
 from typing import cast
 
 import hou
-from hutil.Qt import QtCore, QtWidgets
+from hutil.Qt import QtCore, QtWidgets  # ty: ignore[unresolved-import]
 
 
 class FindReplaceDialog(QtWidgets.QDialog):
@@ -101,7 +101,7 @@ class FindReplaceDialog(QtWidgets.QDialog):
             return text.replace(find, replace)
 
 
-def find_and_replace():
+def find_and_replace() -> None:
     """Open the Find and Replace Dialog."""
 
     dialog = FindReplaceDialog()
@@ -180,45 +180,47 @@ def get_pane_tab(pane_tab_type: hou.EnumValue) -> hou.PaneTab | None:
     return None
 
 
-def get_layout_node(pwd: hou.LopNode, node_type_name: str) -> hou.LopNode | None:
+def get_layout_node(
+    pwd: hou.LopNode | hou.LopNetwork, node_type_name: str
+) -> hou.LopNode | None:
     """Return a Layout node. Create it if needed."""
 
     selection = hou.selectedNodes()
 
+    current_node: hou.Node | None
     if selection and isinstance(selection[0], hou.LopNode):
-        current_node = cast(hou.LopNode, selection[0])
+        current_node = selection[0]
     else:
         current_node = pwd.displayNode()
 
     if current_node is not None:
+        if not isinstance(current_node, hou.LopNode):
+            return None
         if current_node.type().name() == node_type_name:
             return current_node
-        else:
-            node = current_node.createOutputNode(node_type_name)
-            return node
-    else:
-        if pwd.childTypeCategory() == hou.lopNodeTypeCategory():
-            node = pwd.createNode(node_type_name)
-            node.moveToGoodPosition()
-            return node
+        return current_node.createOutputNode(node_type_name)
+
+    if pwd.childTypeCategory() == hou.lopNodeTypeCategory():
+        node = cast(hou.LopNode, pwd.createNode(node_type_name))
+        node.moveToGoodPosition()
+        return node
     return None
 
 
-def enter_state(node_type_name: str, mode: str) -> None:
+def enter_state(node_type: hou.OpNodeType, mode: str) -> None:
     """Enter the edit state of the Layout node. Create a node if needed."""
 
-    scene_viewer = cast(hou.SceneViewer, get_pane_tab(hou.paneTabType.SceneViewer))
-
-    if scene_viewer is None:
+    definition = node_type.definition()
+    if definition is None:
         return
 
-    node_type = hou.nodeType(hou.lopNodeTypeCategory(), node_type_name)
-    if node_type is None:
+    pane_tab = get_pane_tab(hou.paneTabType.SceneViewer)
+    if not isinstance(pane_tab, hou.SceneViewer):
         return
 
-    node_type_definition = node_type.definition()
-    viewer_state = node_type_definition.sections()['DefaultState'].contents()
-    if scene_viewer.currentState() not in ('lopview', viewer_state):
+    scene_viewer = pane_tab
+    viewer_state = definition.sections()['DefaultState'].contents()
+    if scene_viewer.currentState() not in ('lopview', 'scenegraphselect', viewer_state):
         if mode == 'translate':
             scene_viewer.enterTranslateToolState()
         elif mode == 'rotate':
@@ -227,17 +229,18 @@ def enter_state(node_type_name: str, mode: str) -> None:
             scene_viewer.enterScaleToolState()
         return
 
-    network_editor = cast(
-        hou.NetworkEditor, get_pane_tab(hou.paneTabType.NetworkEditor)
-    )
-    if not network_editor:
+    pane_tab = get_pane_tab(hou.paneTabType.NetworkEditor)
+    if pane_tab is None:
         return
 
-    pwd = network_editor.pwd()
-    if not isinstance(pwd, hou.LopNode):
+    if not isinstance(pane_tab, hou.NetworkEditor):
         return
 
-    node = get_layout_node(pwd, node_type_name)
+    pwd = pane_tab.pwd()
+    if not isinstance(pwd, (hou.LopNetwork, hou.LopNode)):
+        return
+
+    node = get_layout_node(pwd, node_type.name())
     if node is None:
         return
 
@@ -245,5 +248,5 @@ def enter_state(node_type_name: str, mode: str) -> None:
     node.setDisplayFlag(True)
     node.setSelected(True, clear_all_selected=True)
 
-    scene_viewer.setCurrentState(viewer_state)
+    scene_viewer.setCurrentState(viewer_state)  # ty: ignore[invalid-argument-type]
     scene_viewer.enterCurrentNodeState()

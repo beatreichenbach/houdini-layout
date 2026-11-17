@@ -1,7 +1,14 @@
 from typing import cast
 
 import hou
-from pxr import Sdf, UsdShade
+from pxr import Sdf, Usd, UsdShade
+
+
+def set_variant(prim: Usd.Prim, variant_set: str, variant_name: str) -> None:
+    """Set the variant for a primitive."""
+
+    vset = prim.GetVariantSet(variant_set)
+    vset.SetVariantSelection(variant_name)
 
 
 def create_references() -> None:
@@ -16,11 +23,11 @@ def create_references() -> None:
     root_layer_id = stage.GetRootLayer().identifier
     created_references = []
 
-    multi_parm = cast(hou.Parm, parent.parm('primitives'))
-    count = multi_parm.evalAsInt()
-    offset = multi_parm.multiParmStartOffset()
-    for i in range(count):
-        index = offset + i
+    primitives_parm = cast(hou.Parm, parent.parm('primitives'))
+    primitives_count = primitives_parm.evalAsInt()
+    primitives_offset = primitives_parm.multiParmStartOffset()
+    for i in range(primitives_count):
+        index = primitives_offset + i
         destination_path = cast(str, parent.evalParm(f'destinationprim{index}'))
         source_path = cast(str, parent.evalParm(f'sourceprim{index}'))
 
@@ -28,10 +35,10 @@ def create_references() -> None:
             continue
 
         destination_prim = stage.GetPrimAtPath(destination_path)
-        if destination_prim.IsValid():
-            continue
+        if not destination_prim.IsValid():
+            if not source_path:
+                continue
 
-        if source_path:
             source_prim = stage.GetPrimAtPath(source_path)
             if not source_prim.IsValid():
                 node.addWarning(f'Invalid source primitive: {source_path}.')
@@ -52,6 +59,16 @@ def create_references() -> None:
             if bound_material:
                 dest_binding_api = UsdShade.MaterialBindingAPI.Apply(destination_prim)
                 dest_binding_api.Bind(bound_material)
+
+        # Variants
+        variants_parm = cast(hou.Parm, parent.parm(f'variants{index}'))
+        variants_count = variants_parm.evalAsInt()
+        for j in range(variants_count):
+            variant_set_name = cast(str, parent.evalParm(f'variantset{index}_{j}'))
+            variant_name = cast(str, parent.evalParm(f'variantname{index}_{j}'))
+
+            variant_set = destination_prim.GetVariantSet(variant_set_name)
+            variant_set.SetVariantSelection(variant_name)
 
 
 create_references()

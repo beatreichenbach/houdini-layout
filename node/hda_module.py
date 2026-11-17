@@ -250,3 +250,44 @@ def enter_state(node_type: hou.OpNodeType, mode: str) -> None:
 
     scene_viewer.setCurrentState(viewer_state)  # ty: ignore[invalid-argument-type]
     scene_viewer.enterCurrentNodeState()
+
+
+def get_variant_set_menu(kwargs: dict[str, object]) -> tuple[str, ...]:
+    """Return the Variant Set menu for a Primitive."""
+
+    node = cast(hou.LopNode, kwargs['node'])
+    index2 = cast(int, kwargs['script_multiparm_index2'])
+
+    destination_path = cast(str, node.evalParm(f'destinationprim{index2}'))
+
+    menu = []
+    stage = node.stage()
+    if stage is not None:
+        destination_prim = stage.GetPrimAtPath(destination_path)
+        if destination_prim.IsValid():
+            variant_sets = destination_prim.GetVariantSets()
+            for name in variant_sets.GetNames():
+                menu.extend((name.lower(), name))
+    return tuple(menu)
+
+
+def get_variant_name_menu(kwargs: dict[str, object]) -> tuple[str, ...]:
+    """Return the Variant Name menu for a Primitive."""
+
+    node = cast(hou.LopNode, kwargs['node'])
+    index = cast(int, kwargs['script_multiparm_index'])
+    index2 = cast(int, kwargs['script_multiparm_index2'])
+
+    destination_path = cast(str, node.evalParm(f'destinationprim{index2}'))
+    variant_set_name = cast(str, node.evalParm(f'variantset{index2}_{index}'))
+
+    menu = []
+    stage = node.stage()
+    if stage is not None:
+        destination_prim = stage.GetPrimAtPath(destination_path)
+        if destination_prim.IsValid():
+            variant_set = destination_prim.GetVariantSet(variant_set_name)
+            if variant_set.IsValid():
+                for name in variant_set.GetVariantNames():
+                    menu.extend((name.lower(), name))
+    return tuple(menu)

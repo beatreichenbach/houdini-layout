@@ -181,6 +181,9 @@ class PrimParms:
     def set_variant(self, variant_set: str, variant_name: str) -> None:
         """Select a variant, reusing the entry of an existing variant set."""
 
+        if not variant_set or not variant_name:
+            return
+
         for variant in self.get_variants():
             if variant.variant_set.evalAsString() == variant_set:
                 variant.variant_name.set(variant_name)
@@ -202,6 +205,8 @@ class PrimParms:
         """Copy the transforms and variant selections of another primitive."""
 
         self.transform().copy_from(other.transform())
+
+        self._parm('variants').set(0)
         for variant in other.get_variants():
             self.set_variant(
                 variant.variant_set.evalAsString(),
@@ -367,7 +372,7 @@ class State:
                 self._update_variant(variant_set, variant_name)
                 self.scene_viewer.endStateUndo()
 
-    def onMenuPreOpen(self, kwargs):
+    def onMenuPreOpen(self, kwargs: dict[str, Any]) -> None:
         """
         Called when the context menu is about to be shown, to update the state
         of the menu and its items.
@@ -618,7 +623,7 @@ class State:
 
         self.xform_handle.show(True)
 
-    def _update_menu(self, kwargs: dict) -> None:
+    def _update_menu(self, kwargs: dict[str, Any]) -> None:
         """Update the context menu with Variants of the selection."""
 
         menu_name = kwargs['menu']

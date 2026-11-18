@@ -63,9 +63,11 @@ def create_references() -> None:
         # Variants
         variants_parm = cast(hou.Parm, parent.parm(f'variants{index}'))
         variants_count = variants_parm.evalAsInt()
+        variants_offset = variants_parm.multiParmStartOffset()
         for j in range(variants_count):
-            variant_set_name = cast(str, parent.evalParm(f'variantset{index}_{j}'))
-            variant_name = cast(str, parent.evalParm(f'variantname{index}_{j}'))
+            index2 = variants_offset + j
+            variant_set_name = cast(str, parent.evalParm(f'variantset{index}_{index2}'))
+            variant_name = cast(str, parent.evalParm(f'variantname{index}_{index2}'))
 
             variant_set = destination_prim.GetVariantSet(variant_set_name)
             variant_set.SetVariantSelection(variant_name)

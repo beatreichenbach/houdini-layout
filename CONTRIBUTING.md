@@ -18,10 +18,3 @@ uv run ruff check --select I --fix node
 uv run ruff check node
 uv run ty check
 ```
-
-## Project Structure
-
-| Directory | Description                                                                                                         |
-|-----------|---------------------------------------------------------------------------------------------------------------------|
-| `src/`    | Digital Assets and the package definition. During the release action they get packaged in the `layout.zip` archive. |
-| `node/`   | The source code for the ViewerState and the HDA Module which is stored in the HDA.                                  |

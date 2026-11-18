@@ -682,7 +682,7 @@ class State:
         primitive = stage.GetPrimAtPath(path)
 
         # Update Variants
-        variant_sets = self._get_variant_sets(primitive)
+        variant_sets = get_variant_sets(primitive)
         for i, (variant_set_name, names) in enumerate(variant_sets.items()):
             self._variant_menu_items[f'variant_set_{i}'] = variant_set_name
 
@@ -737,17 +737,6 @@ class State:
             self._temp_parms = TransformParms.from_node(self.node)
         return self._temp_parms
 
-    def _get_variant_sets(self, primitive: Usd.Prim) -> dict[str, tuple[str, ...]]:
-        """Return the variants for the current selection."""
-
-        variant_sets = {}
-        if primitive.IsValid():
-            variant_set_names = primitive.GetVariantSets().GetNames()
-            for variant_set_name in variant_set_names:
-                names = primitive.GetVariantSet(variant_set_name).GetVariantNames()
-                variant_sets[variant_set_name] = tuple(names)
-        return variant_sets
-
     def _parms_map(self) -> dict[str, PrimParms]:
         """Return the primitives keyed by destination path."""
 
@@ -760,6 +749,39 @@ class State:
             parms = PrimParms(self.node, offset + i)
             parms_map[parms.destination()] = parms
         return parms_map
+
+
+def get_bbox_center(stage: Usd.Stage, paths: Sequence[str]) -> Gf.Vec3d:
+    """Return the combined bounding box center of a list of primitive paths."""
+
+    time_code = Usd.TimeCode(hou.frame())
+    purposes = [UsdGeom.Tokens.default_, UsdGeom.Tokens.proxy]
+    bbox_cache = UsdGeom.BBoxCache(time_code, purposes, useExtentsHint=True)
+
+    combined_range = Gf.Range3d()
+    for path in paths:
+        prim = stage.GetPrimAtPath(path)
+        if prim.IsValid():
+            bbox = bbox_cache.ComputeWorldBound(prim)
+            aligned_range = bbox.ComputeAlignedRange()
+            combined_range.UnionWith(aligned_range)
+
+    if combined_range.IsEmpty():
+        center = Gf.Vec3d(0, 0, 0)
+    else:
+        center = combined_range.GetMidpoint()
+    return center
+
+
+def get_lop_network(node: hou.LopNode) -> hou.LopNetwork | None:
+    """Return the LopNetwork by walking up the node hierarchy."""
+
+    current = node
+    while current is not None:
+        if isinstance(current, hou.LopNetwork):
+            return current
+        current = current.parent()
+    return None
 
 
 def get_parm(node: hou.OpNode, name: str) -> hou.Parm:
@@ -788,36 +810,6 @@ def get_parm_tuple(node: hou.OpNode, name: str) -> hou.ParmTuple:
     return parm_tuple
 
 
-def get_selection(network: hou.LopNetwork, stage: Usd.Stage) -> tuple[str, ...]:
-    """Return a tuple of primitive paths that exist in the stage."""
-
-    selection = network.selection()
-    selection = [s for s in selection if stage.GetPrimAtPath(s)]
-    return tuple(selection)
-
-
-def get_bbox_center(stage: Usd.Stage, paths: Sequence[str]) -> Gf.Vec3d:
-    """Return the combined bounding box center of a list of primitive paths."""
-
-    time_code = Usd.TimeCode(hou.frame())
-    purposes = [UsdGeom.Tokens.default_, UsdGeom.Tokens.proxy]
-    bbox_cache = UsdGeom.BBoxCache(time_code, purposes, useExtentsHint=True)
-
-    combined_range = Gf.Range3d()
-    for path in paths:
-        prim = stage.GetPrimAtPath(path)
-        if prim.IsValid():
-            bbox = bbox_cache.ComputeWorldBound(prim)
-            aligned_range = bbox.ComputeAlignedRange()
-            combined_range.UnionWith(aligned_range)
-
-    if combined_range.IsEmpty():
-        center = Gf.Vec3d(0, 0, 0)
-    else:
-        center = combined_range.GetMidpoint()
-    return center
-
-
 def get_pivot(stage: Usd.Stage, path: str) -> hou.Matrix4:
     """Return the transform for the pivot of a primitive."""
 
@@ -831,6 +823,14 @@ def get_pivot(stage: Usd.Stage, path: str) -> hou.Matrix4:
         pivot = hou.Matrix4(1)
 
     return pivot
+
+
+def get_selection(network: hou.LopNetwork, stage: Usd.Stage) -> tuple[str, ...]:
+    """Return a tuple of primitive paths that exist in the stage."""
+
+    selection = network.selection()
+    selection = [s for s in selection if stage.GetPrimAtPath(s)]
+    return tuple(selection)
 
 
 def get_unique_prim_path(
@@ -854,6 +854,18 @@ def get_unique_prim_path(
         if not stage.GetPrimAtPath(child_path):
             return child_path.pathString
     raise RuntimeError(f'Exceeded maximum limit of {MAX_ITERATIONS} iterations.')
+
+
+def get_variant_sets(primitive: Usd.Prim) -> dict[str, tuple[str, ...]]:
+    """Return the variant names of a primitive keyed by variant set name."""
+
+    variant_sets: dict[str, tuple[str, ...]] = {}
+    if primitive.IsValid():
+        variant_set_names = primitive.GetVariantSets().GetNames()
+        for variant_set_name in variant_set_names:
+            names = primitive.GetVariantSet(variant_set_name).GetVariantNames()
+            variant_sets[variant_set_name] = tuple(names)
+    return variant_sets
 
 
 def get_xform_from_parms(parms: dict[str, Any]) -> hou.Matrix4:
@@ -887,17 +899,6 @@ def get_xform_from_parms(parms: dict[str, Any]) -> hou.Matrix4:
     }
     comp_xform = hou.hmath.buildTransform(comp_dict)
     return xform * comp_xform
-
-
-def get_lop_network(node: hou.LopNode) -> hou.LopNetwork | None:
-    """Return the LopNetwork by walking up the node hierarchy."""
-
-    current = node
-    while current is not None:
-        if isinstance(current, hou.LopNetwork):
-            return current
-        current = current.parent()
-    return None
 
 
 def is_identity(xform: hou.Matrix4) -> bool:

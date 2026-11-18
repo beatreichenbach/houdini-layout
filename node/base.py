@@ -1,3 +1,10 @@
+"""
+Documentation of the viewer state handler interface.
+
+This module is not imported at runtime. It mirrors the handlers Houdini can
+call and their signatures, as a reference for the state implementation.
+"""
+
 import abc
 from typing import Any
 

@@ -76,7 +76,7 @@ def get_unique_xform_op_suffix(xformable: UsdGeom.Xformable, suffix: str) -> str
 
 
 def transform_primitives() -> None:
-    """Create duplicate primitives from the layout node."""
+    """Apply the layout transforms to the primitives."""
 
     node = cast(hou.LopNode, hou.pwd())
     parent = cast(hou.LopNode, node.parent())

@@ -12,7 +12,7 @@ def set_variant(prim: Usd.Prim, variant_set: str, variant_name: str) -> None:
 
 
 def create_references() -> None:
-    """Create duplicate primitives from the layout node."""
+    """Create references for the duplicated primitives."""
 
     node = cast(hou.LopNode, hou.pwd())
     parent = cast(hou.LopNode, node.parent())

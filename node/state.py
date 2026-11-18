@@ -646,7 +646,7 @@ class State:
                 menu_states['value'] = self._variant_menu_values.get(menu_name, '')
 
     def _update_variant(self, variant_set: str, variant_name: str) -> None:
-        """Update the variant of the current selected primitive."""
+        """Update the variant on the selected primitives that support it."""
 
         network = get_lop_network(self.node)
         stage = self.node.stage()
@@ -657,16 +657,23 @@ class State:
         if not selection:
             return
 
-        path = selection[0]
         parms_map = self._parms_map()
-        parms = parms_map.get(path)
-        if parms is None:
-            parms = self._add_primitive(path)
+        for path in selection:
+            variant_sets = get_variant_sets(stage.GetPrimAtPath(path))
+            if variant_name not in variant_sets.get(variant_set, ()):
+                continue
 
-        parms.set_variant(variant_set, variant_name)
+            parms = parms_map.get(path)
+            if parms is None:
+                parms = self._add_primitive(path)
+
+            parms.set_variant(variant_set, variant_name)
 
     def _update_variant_menu_items(self) -> None:
-        """Update the Variant menu items for a Primitive."""
+        """
+        Update the Variant menu items from the first primitive in the
+        selection.
+        """
 
         # Clear
         for key in self._variant_menu_items:

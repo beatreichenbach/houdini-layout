@@ -1,7 +1,7 @@
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import hou
 import stateutils as su  # ty: ignore[unresolved-import]
@@ -25,56 +25,10 @@ STATE_NAME = get_state_name(NODE_TYPE)
 STATE_LABEL = 'Layout'
 STATE_CATEGORY = hou.lopNodeTypeCategory()
 STATE_MENU = STATE_NAME + '_menu'
-HK_CTXT = su.hotkeyContextForState(STATE_NAME, STATE_CATEGORY)
+STATE_ICON = NODE_TYPE.icon()
 
-HUD_TEMPLATE = {
-    'title': 'Layout',
-    'desc': '',
-    'icon': 'LOP_edit',
-    'rows': [
-        {'type': 'divider', 'label': 'Basic'},
-        {'label': 'Translate', 'key': 'T'},
-        {'label': 'Rotate', 'key': 'R'},
-        {'label': 'Scale', 'key': 'E'},
-        {'type': 'divider', 'label': 'Transforms'},
-        {
-            'label': 'Toggle Multi-Snapping',
-            'key': su.hudHotkeyRef('h.pane.gview.edit_snap_toggle'),
-        },
-        {'label': 'Cycle Handle Alignments', 'key': 'M'},
-        {'label': 'Cycle Transform Handles', 'key': 'Y'},
-        {'label': 'Toggle Handle Pivot', 'key': 'Shift+` or Insert'},
-        {'type': 'divider', 'label': 'Selections'},
-        {'label': 'Tap or Hold to Select Prims', 'key': 'S'},
-        {'type': 'divider', 'label': 'Basic'},
-        {'label': 'Duplicate', 'key': 'CTRL + D'},
-        {'label': 'Remove Edits', 'key': 'Del'},
-    ],
-}
-DEFAULT_HANDLE_PARMS = {
-    'px': 0,
-    'py': 0,
-    'pz': 0,
-    'pivot_rx': 0,
-    'pivot_ry': 0,
-    'pivot_rz': 0,
-    'pivot_comp_tx': 0,
-    'pivot_comp_ty': 0,
-    'pivot_comp_tz': 0,
-    'tx': 0,
-    'ty': 0,
-    'tz': 0,
-    'rx': 0,
-    'ry': 0,
-    'rz': 0,
-    'sx': 1,
-    'sy': 1,
-    'sz': 1,
-}
 MAX_ITERATIONS = 1000
 TOLERANCE = 1e-5
-MAX_VARIANT_SETS = 5
-MAX_VARIANTS = 50
 
 
 @dataclass(frozen=True)
@@ -221,6 +175,54 @@ class PrimParms:
 
 
 class State:
+    HK_CTXT = su.hotkeyContextForState(STATE_NAME, STATE_CATEGORY)
+    MAX_VARIANT_SETS = 5
+    MAX_VARIANTS = 50
+    HUD_TEMPLATE: ClassVar[dict[str, Any]] = {
+        'title': 'Layout',
+        'desc': '',
+        'icon': 'LOP_edit',
+        'rows': [
+            {'type': 'divider', 'label': 'Basic'},
+            {'label': 'Translate', 'key': 'T'},
+            {'label': 'Rotate', 'key': 'R'},
+            {'label': 'Scale', 'key': 'E'},
+            {'type': 'divider', 'label': 'Transforms'},
+            {
+                'label': 'Toggle Multi-Snapping',
+                'key': su.hudHotkeyRef('h.pane.gview.edit_snap_toggle'),
+            },
+            {'label': 'Cycle Handle Alignments', 'key': 'M'},
+            {'label': 'Cycle Transform Handles', 'key': 'Y'},
+            {'label': 'Toggle Handle Pivot', 'key': 'Shift+` or Insert'},
+            {'type': 'divider', 'label': 'Selections'},
+            {'label': 'Tap or Hold to Select Prims', 'key': 'S'},
+            {'type': 'divider', 'label': 'Basic'},
+            {'label': 'Duplicate', 'key': 'CTRL + D'},
+            {'label': 'Remove Edits', 'key': 'Del'},
+        ],
+    }
+    DEFAULT_HANDLE_PARMS: ClassVar[dict[str, int]] = {
+        'px': 0,
+        'py': 0,
+        'pz': 0,
+        'pivot_rx': 0,
+        'pivot_ry': 0,
+        'pivot_rz': 0,
+        'pivot_comp_tx': 0,
+        'pivot_comp_ty': 0,
+        'pivot_comp_tz': 0,
+        'tx': 0,
+        'ty': 0,
+        'tz': 0,
+        'rx': 0,
+        'ry': 0,
+        'rz': 0,
+        'sx': 1,
+        'sy': 1,
+        'sz': 1,
+    }
+
     duplicate_key = f'{HK_CTXT}.duplicate'
     translate_key = f'{HK_CTXT}.translate'
     rotate_key = f'{HK_CTXT}.rotate'
@@ -243,16 +245,10 @@ class State:
 
     @property
     def node(self) -> hou.LopNode:
-        """
-        Return the current node.
+        """Return the current node."""
 
-        :raises RuntimeError: if the state has no node.
-        """
-
-        node = self._node
-        if node is None:
-            raise RuntimeError('state has no node')
-        return node
+        assert self._node is not None, 'state has no node'
+        return self._node
 
     @staticmethod
     def bind_handles(template: hou.ViewerStateTemplate) -> None:
@@ -270,26 +266,32 @@ class State:
         hotkey_definitions = hou.PluginHotkeyDefinitions()
 
         hotkey_definitions.addCommandCategory(
-            HK_CTXT, 'LOP Layout State', 'These keys apply to the LOP Layout State.'
+            State.HK_CTXT,
+            'LOP Layout State',
+            'These keys apply to the LOP Layout State.',
         )
         hotkey_definitions.addContext(
-            HK_CTXT, 'LOP Layout State', 'These keys apply to the LOP Layout State.'
+            State.HK_CTXT,
+            'LOP Layout State',
+            'These keys apply to the LOP Layout State.',
         )
 
         hotkey_definitions.addCommand(State.duplicate_key, 'Duplicate', 'Duplicate')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, State.duplicate_key, ['CTRL+D'])
+        hotkey_definitions.addDefaultBinding(
+            State.HK_CTXT, State.duplicate_key, ['CTRL+D']
+        )
 
         hotkey_definitions.addCommand(State.translate_key, 'Translate', 'Translate')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, State.translate_key, ['T'])
+        hotkey_definitions.addDefaultBinding(State.HK_CTXT, State.translate_key, ['T'])
 
         hotkey_definitions.addCommand(State.rotate_key, 'Rotate', 'Rotate')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, State.rotate_key, ['R'])
+        hotkey_definitions.addDefaultBinding(State.HK_CTXT, State.rotate_key, ['R'])
 
         hotkey_definitions.addCommand(State.scale_key, 'Scale', 'Scale')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, State.scale_key, ['E'])
+        hotkey_definitions.addDefaultBinding(State.HK_CTXT, State.scale_key, ['E'])
 
         hotkey_definitions.addCommand(State.delete_key, 'Remove', 'Remove')
-        hotkey_definitions.addDefaultBinding(HK_CTXT, State.delete_key, ['Del'])
+        hotkey_definitions.addDefaultBinding(State.HK_CTXT, State.delete_key, ['Del'])
 
         template.bindHotkeyDefinitions(hotkey_definitions)
 
@@ -303,10 +305,10 @@ class State:
 
         submenu = hou.ViewerStateMenu('variants', 'Variants')
         menu.addMenu(submenu)
-        for i in range(MAX_VARIANT_SETS):
+        for i in range(State.MAX_VARIANT_SETS):
             radio = f'variant_set_{i}'
             submenu.addRadioStrip(radio, f'Variant Set {i}', f'variant_{i}_0')
-            for j in range(MAX_VARIANTS):
+            for j in range(State.MAX_VARIANTS):
                 submenu.addRadioStripItem(radio, f'variant_{i}_{j}', f'Variant {j}')
 
         template.bindMenu(menu)
@@ -316,10 +318,10 @@ class State:
 
         self._init_node(kwargs['node'])
 
-        if self._node is None:
+        if not self.valid():
             return
 
-        self.scene_viewer.hudInfo(show=True, template=HUD_TEMPLATE)  # ty: ignore[unresolved-attribute]
+        self.scene_viewer.hudInfo(show=True, template=self.HUD_TEMPLATE)  # ty: ignore[unresolved-attribute]
 
     def onExit(self, kwargs: dict[str, Any]) -> None:
         """Called when the state is about to be exited."""
@@ -347,7 +349,7 @@ class State:
     def onMenuAction(self, kwargs: dict[str, Any]) -> None:
         """Called when a context menu choice is selected."""
 
-        if self._node is None:
+        if not self.valid():
             return
 
         menu_item = cast(str, kwargs.get('menu_item'))
@@ -383,7 +385,7 @@ class State:
     def onBeginHandleToState(self, kwargs: dict[str, Any]) -> None:
         """Called at the start of user interaction with a handle."""
 
-        if self._node is None:
+        if not self.valid():
             return
 
         self.scene_viewer.beginStateUndo('Move primitives')
@@ -393,7 +395,7 @@ class State:
     def onEndHandleToState(self, kwargs: dict[str, Any]) -> None:
         """Called at the end of user interaction with a handle."""
 
-        if self._node is None:
+        if not self.valid():
             return
 
         self._apply_transforms()
@@ -403,7 +405,7 @@ class State:
     def onHandleToState(self, kwargs: dict[str, Any]) -> None:
         """Called on user interaction with a bound handle."""
 
-        if self._node is None:
+        if not self.valid():
             return
 
         # NOTE: On hou.uiEventReason.Start the prev_parms are not populated.
@@ -423,7 +425,7 @@ class State:
     def onStateToHandle(self, kwargs: dict[str, Any]) -> None:
         """Called when node parameters change, to update handle parameters."""
 
-        if self._node is None:
+        if not self.valid():
             return
 
         self._update_pivot(kwargs)
@@ -432,11 +434,14 @@ class State:
         """Called when the user selected geometry. Return True to accept the
         selection and stop the selector."""
 
-        if self._node is None:
+        if not self.valid():
             return True
 
         self.xform_handle.update()
         return True
+
+    def valid(self) -> bool:
+        return self._node is not None
 
     def _init_node(self, node: hou.OpNode) -> None:
         """Initialize the node."""
@@ -601,7 +606,7 @@ class State:
             return
 
         # Reset State
-        kwargs['parms'].update(DEFAULT_HANDLE_PARMS)
+        kwargs['parms'].update(self.DEFAULT_HANDLE_PARMS)
 
         # Set pivot to selection
         if len(selection) == 1:
@@ -797,28 +802,18 @@ def get_lop_network(node: hou.LopNode) -> hou.LopNetwork | None:
 
 
 def get_parm(node: hou.OpNode, name: str) -> hou.Parm:
-    """
-    Return a parameter by name.
-
-    :raises RuntimeError: if the parameter does not exist.
-    """
+    """Return a parameter by name."""
 
     parm = node.parm(name)
-    if parm is None:
-        raise RuntimeError(f'parameter does not exist: {name}')
+    assert parm is not None, f'parameter does not exist: {name}'
     return parm
 
 
 def get_parm_tuple(node: hou.OpNode, name: str) -> hou.ParmTuple:
-    """
-    Return a parameter tuple by name.
-
-    :raises RuntimeError: if the parameter tuple does not exist.
-    """
+    """Return a parameter tuple by name."""
 
     parm_tuple = node.parmTuple(name)
-    if parm_tuple is None:
-        raise RuntimeError(f'parameter tuple does not exist: {name}')
+    assert parm_tuple is not None, f'parameter tuple does not exist: {name}'
     return parm_tuple
 
 
@@ -925,7 +920,7 @@ def createViewerStateTemplate() -> hou.ViewerStateTemplate:
 
     template = hou.ViewerStateTemplate(STATE_NAME, STATE_LABEL, STATE_CATEGORY)
     template.bindFactory(State)
-    template.bindIcon(NODE_TYPE.icon())
+    template.bindIcon(STATE_ICON)
 
     State.bind_handles(template)
     State.bind_hotkeys(template)
